@@ -1,21 +1,45 @@
 <script lang="ts">
 	import { onMount } from 'svelte'
+	import { quintOut } from 'svelte/easing';
+	import { crossfade } from 'svelte/transition';
+	import { flip } from 'svelte/animate';
+
 	import type { ItemI } from './interfaces/Item'
+	import AddItemForm from './components/AddItemForm.svelte'
 	import Item from './components/Item.svelte'
 
 	export let storageName
 
+	const [send, receive] = crossfade({
+		duration: d => Math.sqrt(d * 200),
+
+		fallback(node, params) {
+			const style = getComputedStyle(node);
+			const transform = style.transform === 'none' ? '' : style.transform;
+
+			return {
+				duration: 400,
+				easing: quintOut,
+				css: t => `
+					transform: translateY(${(t * 1) - 1}em);
+					opacity: ${t}
+				`
+			};
+		}
+	});
+
 	//Filled in with the onMount function
 	let list: ItemI[] = []
-
 	let newItem: string = ''
-	let newItemExists: boolean
-	$: newItemExists = newItem.length > 0
+	let allAreChecked: boolean
+	let isSortedByChecked: boolean = false
+
+	$: allAreChecked = list.filter(item => !item.checked).length === 0
 
 	//Adds a new item to the list
 	const addItem = (): void => {
 		if(!newItem) return
-		let itemToAdd: ItemI = { title: newItem, id: Date.now() }
+		let itemToAdd: ItemI = { title: newItem, id: Date.now(), checked: false }
 		list = [itemToAdd, ...list]
 		newItem = ''
 		syncItems()
@@ -32,28 +56,42 @@
 		localStorage.setItem(storageName, JSON.stringify(list))
 	}
 
+	//Check all items
+	const checkOrUncheckAll = (): void => {
+		list = list.map(item => item = {...item, checked: !allAreChecked})
+	}
+
+	//Sort list by checked
+	const sortByChecked = (): void => {
+		isSortedByChecked = !isSortedByChecked
+		list = list.sort((a, b) => (isSortedByChecked ? a.checked > b.checked : a.id < b.id))
+	}
+
 	//Retrieves items from localStorage
 	onMount((): void => {
 		const storedItems = JSON.parse(localStorage.getItem(storageName))
-		list = storedItems || [{ title: "ok", id: 1}, { title: "Yeah", id: 2}, { title: "another", id: 3}]
+		list = storedItems || [{ title: "Demo", id: 1}]
 	})
-
 </script>
 
 <main>
 	<div class="container">
-		<h1>Hello!</h1>
 
-		<form on:submit|preventDefault={() => addItem()} class="flex-container">
-			<input type="text" bind:value={newItem}>
-			<button type="submit" disabled={!newItemExists}>
-				Add item
-			</button>
-		</form>
+		<AddItemForm bind:newItem {addItem}/>
+
+		<button on:click={checkOrUncheckAll}>
+			{allAreChecked ? 'Uncheck' : 'Check'} all
+		</button>
+
+		<button on:click={sortByChecked}>
+			{isSortedByChecked ? '✅' : '⬜'}Unchecked first
+		</button>
 
 		<ul>
-			{#each list as listItem}
-				<Item {listItem} {removeItem} {syncItems}/>
+			{#each list as listItem (listItem.id)}
+				<li in:receive="{{key: listItem.id}}" out:send="{{key: listItem.id}}" animate:flip={{duration: 400}}>
+					<Item bind:listItem {removeItem} {syncItems}/>
+				</li>
 			{/each}
 		</ul>
 	</div>
@@ -65,11 +103,11 @@ ul {
 	padding-left: 0;
 }
 
-form input[type=text] {
-	flex: 1 1 auto;
-}
-
-form button {
-	margin-left: .5rem;
+li {
+	display: flex;
+	align-items: center;
+	padding: .25rem;
+	display: flex;
+	transition: transform .4s var(--transition);
 }
 </style>

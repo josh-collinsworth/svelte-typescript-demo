@@ -19,6 +19,7 @@
 *, *:before, *:after {
 	box-sizing: border-box;
 	color: inherit;
+	position: relative;
 }
 
 *:focus {
@@ -51,6 +52,14 @@ input, button, select, textarea {
 	padding: 0.5em;
 	border: 1px solid #ccc;
 	border-radius: .2rem;
+}
+
+button {
+	font-weight: bold;
+}
+
+input:disabled, button:disabled, select:disabled, textarea:disabled {
+	opacity: 0.5;
 }
 
 .flex-container {
