@@ -22,7 +22,7 @@
 				easing: quintOut,
 				css: t => `
 					transform: translateY(${(t * 1) - 1}em);
-					opacity: ${t}
+					opacity: ${t};
 				`
 			};
 		}
@@ -32,7 +32,7 @@
 	let list: ItemI[] = []
 	let newItem: string = ''
 	let allAreChecked: boolean
-	let isSortedByChecked: boolean = false
+	let hideChecked: boolean = false
 
 	$: allAreChecked = list.filter(item => !item.checked).length === 0
 
@@ -59,23 +59,38 @@
 	//Check all items
 	const checkOrUncheckAll = (): void => {
 		list = list.map(item => item = {...item, checked: !allAreChecked})
+		syncItems()
 	}
 
 	//Sort list by checked
-	const sortByChecked = (): void => {
-		isSortedByChecked = !isSortedByChecked
-		list = list.sort((a, b) => (isSortedByChecked ? a.checked > b.checked : a.id < b.id))
+	const toggleHideChecked = (): void => {
+		hideChecked = !hideChecked
+		if (hideChecked) {
+			list = list.filter(item => !item.checked)
+		} else {
+			getStoredItems()
+		}
+	}
+
+	//Retrieves list from localStorage
+	const getStoredItems = (): void => {
+		const storedItems = JSON.parse(localStorage.getItem(storageName))
+		list = storedItems || [{ title: "Demo", id: 1}]
 	}
 
 	//Retrieves items from localStorage
 	onMount((): void => {
-		const storedItems = JSON.parse(localStorage.getItem(storageName))
-		list = storedItems || [{ title: "Demo", id: 1}]
+		getStoredItems()
 	})
 </script>
 
 <main>
 	<div class="container">
+
+		<h1>Task list</h1>
+		<p class="subhead">
+			{list.filter(item => !item.checked).length} remaining
+		</p>
 
 		<AddItemForm bind:newItem {addItem}/>
 
@@ -83,9 +98,9 @@
 			{allAreChecked ? 'Uncheck' : 'Check'} all
 		</button>
 
-		<button on:click={sortByChecked}>
-			{isSortedByChecked ? '✅' : '⬜'}Unchecked first
-		</button>
+		<label>
+			<input type="checkbox" checked={hideChecked} on:change={toggleHideChecked}> Hide checked
+		</label>
 
 		<ul>
 			{#each list as listItem (listItem.id)}
